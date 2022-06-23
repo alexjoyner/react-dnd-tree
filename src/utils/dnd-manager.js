@@ -117,22 +117,9 @@ export default class DndManager {
       return false;
     }
 
-    const rowAbove = dropTargetProps.getPrevRow();
-    const abovePath = rowAbove ? rowAbove.path : [];
-    const aboveNode = rowAbove ? rowAbove.node : {};
     const targetDepth = this.getTargetDepth(dropTargetProps, monitor, null);
-
-    // Cannot drop if we're adding to the children of the row above and
-    //  the row above is a function
-    if (
-      targetDepth >= abovePath.length &&
-      typeof aboveNode.children === 'function'
-    ) {
-      return false;
-    }
-
+    const { node } = monitor.getItem();
     if (typeof this.customCanDrop === 'function') {
-      const { node } = monitor.getItem();
       const addedResult = memoizedInsertNode({
         treeData: this.treeData,
         newNode: node,
@@ -280,6 +267,30 @@ export default class DndManager {
         this.drop(result);
 
         return result;
+      },
+      canDrop: (dropTargetProps, monitor) => {
+        if (typeof this.customCanDrop === 'function') {
+          const { node } = monitor.getItem();
+          const addedResult = memoizedInsertNode({
+            treeData: this.treeData,
+            newNode: node,
+            depth: 0,
+            getNodeKey: this.getNodeKey,
+            minimumTreeIndex: dropTargetProps.listIndex,
+            expandParent: true,
+          });
+
+          return this.customCanDrop({
+            node,
+            prevPath: monitor.getItem().path,
+            prevParent: monitor.getItem().parentNode,
+            prevTreeIndex: monitor.getItem().treeIndex, // Equals -1 when dragged from external tree
+            nextPath: addedResult.path,
+            nextParent: addedResult.parentNode,
+            nextTreeIndex: addedResult.treeIndex,
+          });
+        }
+        return true;
       },
     };
 

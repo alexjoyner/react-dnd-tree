@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import withScrolling, {
   createHorizontalStrength,
   createScrollingComponent,
@@ -35,6 +37,7 @@ import {
   removeNode,
   toggleExpandedForAll,
   walk,
+  getVisibleNodeInfoAtIndex,
 } from './utils/tree-data-utils';
 
 let treeIdCounter = 1;
@@ -194,7 +197,7 @@ class ReactSortableTree extends Component {
 
     instanceProps.searchQuery = nextProps.searchQuery;
     instanceProps.searchFocusOffset = nextProps.searchFocusOffset;
-    newState.instanceProps = {...instanceProps, ...newState.instanceProps };
+    newState.instanceProps = instanceProps;
  
     return newState;
   }
@@ -249,7 +252,7 @@ class ReactSortableTree extends Component {
     this.props.onVisibilityToggle({
       treeData,
       node: targetNode,
-      expanded: !targetNode.expanded,
+      expanded: targetNode.expanded,
       path,
     });
   }
@@ -313,7 +316,7 @@ class ReactSortableTree extends Component {
       return { searchMatches: [] };
     }
 
-    const newState = { instanceProps: {} };
+    const newState = {};
 
     // if onlyExpandSearchedNodes collapse the tree and search
     const { treeData: expandedTreeData, matches: searchMatches } = find({
@@ -333,7 +336,7 @@ class ReactSortableTree extends Component {
 
     // Update the tree with data leaving all paths leading to matching nodes open
     if (expand) {
-      newState.instanceProps.ignoreOneTreeUpdate = true; // Prevents infinite loop
+      newState.ignoreOneTreeUpdate = true; // Prevents infinite loop
       onChange(expandedTreeData);
     }
 
@@ -389,6 +392,25 @@ class ReactSortableTree extends Component {
       this.state.draggedMinimumTreeIndex === draggedMinimumTreeIndex
     ) {
       return;
+    }
+
+    /* 
+     When a node is being dragged into / around the tree, if the new
+     potential parent has nodes that need to be fetched (which can be found
+     by checking if that node has a function for children) then don't let the
+     node be placed as a child of that node. The node must first be expanded
+    */
+    const currentTree =
+      this.state.draggingTreeData || this.state.instanceProps.treeData;
+    if (draggedMinimumTreeIndex) {
+      const potentialDropNode = getVisibleNodeInfoAtIndex({
+        treeData: currentTree,
+        index: draggedMinimumTreeIndex - 1,
+        getNodeKey: this.props.getNodeKey,
+      });
+      if (typeof potentialDropNode.node.children === 'function') {
+        return;
+      }
     }
 
     this.setState(({ draggingTreeData, instanceProps }) => {

@@ -146,6 +146,7 @@ class TreeNode extends Component {
       <div
         {...otherProps}
         className={classnames('rst__node', rowDirectionClass)}
+        data-testid='hierarchy-node'
       >
         {scaffold}
 
